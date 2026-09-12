@@ -209,6 +209,39 @@ void test_serialize_too_small_buffer_returns_zero() {
   TEST_ASSERT_EQUAL_UINT(0, serializeConfig(c, buf, sizeof buf, false));
 }
 
+void test_masked_roundtrip_keeps_passwords() {
+  Config c = defaultConfig();
+  strcpy(c.ssid, "Garten");
+  strcpy(c.wifiPassword, "geheim1");
+  strcpy(c.mqttHost, "broker");
+  strcpy(c.mqttPassword, "geheim2");
+  char buf[CONFIG_JSON_SIZE];
+  TEST_ASSERT_TRUE(serializeConfig(c, buf, sizeof buf, true) > 0);
+  TEST_ASSERT_TRUE(parseConfig(buf, c));
+  TEST_ASSERT_EQUAL_STRING("geheim1", c.wifiPassword);
+  TEST_ASSERT_EQUAL_STRING("geheim2", c.mqttPassword);
+  TEST_ASSERT_EQUAL_STRING("Garten", c.ssid);
+  TEST_ASSERT_EQUAL_STRING("broker", c.mqttHost);
+}
+
+void test_full_config_fits_buffer() {
+  Config c = defaultConfig();
+  memset(c.ssid, 'a', sizeof c.ssid - 1); c.ssid[sizeof c.ssid - 1] = '\0';
+  memset(c.wifiPassword, 'b', sizeof c.wifiPassword - 1); c.wifiPassword[sizeof c.wifiPassword - 1] = '\0';
+  memset(c.mqttHost, 'c', sizeof c.mqttHost - 1); c.mqttHost[sizeof c.mqttHost - 1] = '\0';
+  memset(c.mqttUser, 'd', sizeof c.mqttUser - 1); c.mqttUser[sizeof c.mqttUser - 1] = '\0';
+  memset(c.mqttPassword, 'e', sizeof c.mqttPassword - 1); c.mqttPassword[sizeof c.mqttPassword - 1] = '\0';
+  memset(c.topicPrefix, 'f', sizeof c.topicPrefix - 1); c.topicPrefix[sizeof c.topicPrefix - 1] = '\0';
+  memset(c.deviceName, 'g', sizeof c.deviceName - 1); c.deviceName[sizeof c.deviceName - 1] = '\0';
+  strcpy(c.staticIp, "255.255.255.255");
+  strcpy(c.gateway, "255.255.255.255");
+  strcpy(c.subnet, "255.255.255.255");
+  strcpy(c.dns, "255.255.255.255");
+  char buf[CONFIG_JSON_SIZE];
+  TEST_ASSERT_TRUE(serializeConfig(c, buf, sizeof buf, false) > 0);
+  TEST_ASSERT_TRUE(serializeConfig(c, buf, sizeof buf, true) > 0);
+}
+
 void test_evaluate_reading() {
   Config c = defaultConfig();
   Reading r = evaluateReading(226, c);
@@ -236,6 +269,8 @@ int main(int, char**) {
   RUN_TEST(test_serialize_roundtrip);
   RUN_TEST(test_serialize_masks_secrets);
   RUN_TEST(test_serialize_too_small_buffer_returns_zero);
+  RUN_TEST(test_masked_roundtrip_keeps_passwords);
+  RUN_TEST(test_full_config_fits_buffer);
   RUN_TEST(test_validate_requires_device_and_prefix);
   RUN_TEST(test_evaluate_reading);
   return UNITY_END();

@@ -30,10 +30,21 @@ void test_payload_with_test_flag() {
   TEST_ASSERT_EQUAL_STRING("{\"raw\":218,\"percent\":18,\"level\":\"dry\",\"rssi\":-70,\"test\":true}", buf);
 }
 
+void test_topic_max_length() {
+  Config c = defaultConfig();
+  memset(c.topicPrefix, 'p', sizeof c.topicPrefix - 1); c.topicPrefix[sizeof c.topicPrefix - 1] = '\0';
+  memset(c.deviceName, 'n', sizeof c.deviceName - 1); c.deviceName[sizeof c.deviceName - 1] = '\0';
+  char buf[MQTT_TOPIC_SIZE];
+  size_t len = buildStateTopic(c, buf, sizeof buf);
+  TEST_ASSERT_EQUAL_UINT(71, len);
+  TEST_ASSERT_TRUE(len < MQTT_TOPIC_SIZE);
+}
+
 int main(int, char**) {
   UNITY_BEGIN();
   RUN_TEST(test_topic);
   RUN_TEST(test_payload_without_test_flag);
   RUN_TEST(test_payload_with_test_flag);
+  RUN_TEST(test_topic_max_length);
   return UNITY_END();
 }
