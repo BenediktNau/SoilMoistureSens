@@ -122,5 +122,39 @@ size_t serializeConfig(const Config& c, char* buf, size_t n, bool maskSecrets) {
 }
 
 #ifdef ARDUINO
-// LittleFS-Teil folgt in Task 5
+#include <Arduino.h>
+#include <LittleFS.h>
+
+static const char* CONFIG_PATH = "/config.json";
+
+bool loadConfig(Config& io) {
+  File f = LittleFS.open(CONFIG_PATH, "r");
+  if (!f) {
+    Serial.println("Keine config.json, Standardwerte");
+    return false;
+  }
+  char buf[CONFIG_JSON_SIZE];
+  size_t n = f.readBytes(buf, sizeof buf - 1);
+  buf[n] = '\0';
+  f.close();
+  if (!parseConfig(buf, io)) {
+    Serial.println("config.json unlesbar, Standardwerte");
+    return false;
+  }
+  return true;
+}
+
+bool saveConfig(const Config& c) {
+  char buf[CONFIG_JSON_SIZE];
+  size_t n = serializeConfig(c, buf, sizeof buf, false);
+  if (n == 0) return false;
+  File f = LittleFS.open(CONFIG_PATH, "w");
+  if (!f) {
+    Serial.println("config.json kann nicht geschrieben werden");
+    return false;
+  }
+  size_t written = f.write((const uint8_t*)buf, n);
+  f.close();
+  return written == n;
+}
 #endif
