@@ -11,7 +11,8 @@ static const char* TEXT_TYPE = "text/plain; charset=utf-8";
 
 WebUi::WebUi(Config& cfg, unsigned long idleTimeoutMs)
   : cfg_(cfg), server_(80), idleTimeoutMs_(idleTimeoutMs),
-    lastRequestMs_(0), raw_(0), sleepRequested_(false) {}
+    lastRequestMs_(0), raw_(0), sleepRequested_(false),
+    wifiReconfigPending_(false), wifiReconfigAtMs_(0) {}
 
 void WebUi::begin() {
   lastRequestMs_ = millis();
@@ -27,7 +28,15 @@ void WebUi::begin() {
   Serial.println("Webserver auf Port 80 gestartet");
 }
 
-void WebUi::handle() { server_.handleClient(); }
+void WebUi::handle() {
+  server_.handleClient();
+  if (wifiReconfigPending_ && (long)(millis() - wifiReconfigAtMs_) >= 0) {
+    wifiReconfigPending_ = false;
+    Serial.println("WLAN-Einstellungen geaendert, verbinde neu");
+    WiFi.disconnect();
+    beginStation(cfg_);
+  }
+}
 
 void WebUi::setRaw(int raw) { raw_ = raw; }
 
@@ -92,13 +101,14 @@ void WebUi::handlePostConfig() {
                      strcmp(cfg_.subnet, next.subnet) != 0 ||
                      strcmp(cfg_.dns, next.dns) != 0;
   cfg_ = next;
-  if (wifiChanged) {
-    // Neue Zugangsdaten oder Adresse sofort probieren, nicht blockierend
-    WiFi.disconnect();
-    beginStation(cfg_);
-  }
   Serial.println("Konfiguration gespeichert");
   server_.send(200, TEXT_TYPE, "ok");
+  if (wifiChanged) {
+    // Erst antworten, dann neu verbinden: die Antwort geht sonst ueber eine
+    // Verbindung, die WiFi.disconnect() gerade abbaut.
+    wifiReconfigPending_ = true;
+    wifiReconfigAtMs_ = millis() + 500;
+  }
 }
 
 void WebUi::handleScan() {

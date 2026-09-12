@@ -29,4 +29,6 @@ class WebUi {
   unsigned long lastRequestMs_;
   int raw_;
   bool sleepRequested_;
+  bool wifiReconfigPending_;
+  unsigned long wifiReconfigAtMs_;
 };
