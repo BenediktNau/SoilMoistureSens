@@ -145,7 +145,7 @@ async function poll(){
   render();
  }catch(e){say('Keine Verbindung zum Sensor','err')}
 }
-function collect(){const o={};for(const k of F)o[k]=NUM.includes(k)?num(k):$(k).value;return o}
+function collect(){const o={};for(const k of F){if(NUM.includes(k)){const v=$(k).value.trim();if(v==='')continue;o[k]=parseInt(v,10)}else o[k]=$(k).value}return o}
 async function loadCfg(){
  const r=await fetch('/api/config');const c=await r.json();
  for(const k of F)if(k in c)$(k).value=c[k];
