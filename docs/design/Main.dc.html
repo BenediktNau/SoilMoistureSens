@@ -1,0 +1,224 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; background: #0d1116; color: #e6eaef; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #5eb1e8; } a:hover { color: #8fcbf2; }
+    .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+    .card { background: #141a21; border: 1px solid #242c36; border-radius: 12px; padding: 18px 16px; display: flex; flex-direction: column; gap: 14px; }
+    .card-title { font-size: 12px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #8a94a1; margin: 0; }
+    .label { font-size: 13px; color: #b7c0ca; margin: 0 0 6px 0; }
+    .field { height: 44px; box-sizing: border-box; background: #0a0e13; border: 1px solid #242c36; border-radius: 8px; padding: 0 12px; display: flex; align-items: center; font-size: 15px; color: #e6eaef; }
+    .field.placeholder { color: #5b6572; }
+    .btn { height: 44px; box-sizing: border-box; border-radius: 8px; padding: 0 14px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 600; white-space: nowrap; }
+    .btn-ghost { background: transparent; border: 1px solid #2d3742; color: #cdd5de; }
+    .btn-primary { background: #5eb1e8; border: 1px solid #5eb1e8; color: #061018; }
+    .hint { font-size: 12px; color: #8a94a1; margin: 0; line-height: 1.45; }
+  </style>
+</helmet>
+
+<div style="width: 390px; min-height: 1760px; box-sizing: border-box; background: #0d1116; padding: 20px 16px 28px 16px; display: flex; flex-direction: column; gap: 14px;">
+
+  <!-- Kopfzeile -->
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 0 2px 6px 2px;">
+    <div style="display: flex; flex-direction: column; gap: 3px;">
+      <div style="font-size: 18px; font-weight: 700; letter-spacing: -0.01em;">Bodenfeuchte</div>
+      <div class="mono" style="font-size: 12px; color: #8a94a1;">sensor1 · 192.168.4.1</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px; background: #141a21; border: 1px solid #242c36; border-radius: 999px; padding: 6px 10px 6px 8px;">
+      <span style="width: 8px; height: 8px; border-radius: 50%; background: #5eb1e8; box-shadow: 0 0 8px #5eb1e8;"></span>
+      <span style="font-size: 12px; color: #b7c0ca;">Konfigmodus</span>
+      <span class="mono" style="font-size: 12px; color: #e6eaef;">4:32</span>
+    </div>
+  </div>
+
+  <!-- Live-Anzeige -->
+  <div class="card" style="gap: 16px; background: linear-gradient(180deg, #171e27 0%, #131920 100%);">
+    <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;">
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <p class="card-title">Aktuelle Feuchte</p>
+        <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span class="mono" style="font-size: 64px; font-weight: 600; line-height: 1; letter-spacing: -0.03em; color: {{m.color}}; text-shadow: 0 0 24px {{m.glow}};">{{m.pct}}</span>
+          <span class="mono" style="font-size: 22px; color: #8a94a1;">%</span>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px; padding-bottom: 4px;">
+        <span style="font-size: 13px; font-weight: 600; padding: 5px 10px; border-radius: 999px; background: {{m.badgeBg}}; color: {{m.color}}; border: 1px solid {{m.badgeBorder}};">{{m.label}}</span>
+        <span class="mono" style="font-size: 12px; color: #8a94a1;">Roh {{m.raw}}</span>
+      </div>
+    </div>
+
+    <!-- Balken mit Schwellen -->
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="position: relative; height: 10px; border-radius: 999px; overflow: visible; display: flex; gap: 2px;">
+        <div style="flex-basis: 30%; height: 10px; background: #3a2a17; border-radius: 999px 0 0 999px;"></div>
+        <div style="flex-basis: 40%; height: 10px; background: #172d3a;"></div>
+        <div style="flex-basis: 30%; height: 10px; background: #221d3a; border-radius: 0 999px 999px 0;"></div>
+        <div style="position: absolute; top: -4px; left: {{m.left}}; width: 4px; height: 18px; margin-left: -2px; border-radius: 2px; background: {{m.color}}; box-shadow: 0 0 10px {{m.glow}};"></div>
+      </div>
+      <div class="mono" style="display: flex; justify-content: space-between; font-size: 11px; color: #5b6572;">
+        <span>0</span><span style="color: #8a94a1;">30 trocken</span><span style="color: #8a94a1;">70 nass</span><span>100</span>
+      </div>
+    </div>
+    <p class="hint">Aktualisiert alle 2 Sekunden. Prozent rechnet mit den unten eingetragenen Kalibrierwerten.</p>
+  </div>
+
+  <!-- Kalibrierung -->
+  <div class="card">
+    <p class="card-title">Kalibrierung</p>
+    <div style="display: flex; flex-direction: column;">
+      <p class="label">Rohwert trocken (Sensor an der Luft)</p>
+      <div style="display: flex; gap: 8px;">
+        <div class="field mono" style="flex-grow: 1;">226</div>
+        <div class="btn btn-ghost">Aktuellen Wert übernehmen</div>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column;">
+      <p class="label">Rohwert nass (Sensor im Wasser)</p>
+      <div style="display: flex; gap: 8px;">
+        <div class="field mono" style="flex-grow: 1;">181</div>
+        <div class="btn btn-ghost">Aktuellen Wert übernehmen</div>
+      </div>
+    </div>
+    <p class="hint">Sensor in Luft halten, Wert übernehmen. Dann in ein Wasserglas, Wert übernehmen.</p>
+  </div>
+
+  <!-- Schwellen und Intervall -->
+  <div class="card">
+    <p class="card-title">Bewertung und Intervall</p>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+      <div style="display: flex; flex-direction: column;">
+        <p class="label">Trocken unter</p>
+        <div class="field mono" style="justify-content: space-between;"><span>30</span><span style="color: #5b6572;">%</span></div>
+      </div>
+      <div style="display: flex; flex-direction: column;">
+        <p class="label">Nass ab</p>
+        <div class="field mono" style="justify-content: space-between;"><span>70</span><span style="color: #5b6572;">%</span></div>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column;">
+      <p class="label">Sendeintervall</p>
+      <div class="field mono" style="justify-content: space-between;"><span>15</span><span style="color: #5b6572;">Minuten</span></div>
+    </div>
+    <p class="hint">Zwischen zwei Messungen schläft der Sensor. Kürzere Intervalle kosten Akku.</p>
+  </div>
+
+  <!-- WLAN -->
+  <div class="card">
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <p class="card-title">WLAN</p>
+      <span class="mono" style="font-size: 12px; color: #5eb1e8;">verbunden · 192.168.1.42</span>
+    </div>
+    <div style="display: flex; flex-direction: column;">
+      <p class="label">Netzwerk</p>
+      <div style="display: flex; gap: 8px;">
+        <div class="field" style="flex-grow: 1; justify-content: space-between;">
+          <span>Gartenhaus</span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#8a94a1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"></path></svg>
+        </div>
+        <div class="btn btn-ghost" style="padding: 0 12px;">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#cdd5de" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"></path><path d="M13.5 2.5v3h-3"></path></svg>
+          <span>Suchen</span>
+        </div>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column;">
+      <p class="label">Passwort</p>
+      <div class="field mono placeholder">••••••••  (unverändert)</div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+      <div style="display: flex; flex-direction: column;">
+        <p class="label">Statische IP</p>
+        <div class="field mono placeholder">leer = DHCP</div>
+      </div>
+      <div style="display: flex; flex-direction: column;">
+        <p class="label">Gateway</p>
+        <div class="field mono placeholder">192.168.1.1</div>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+      <div style="display: flex; flex-direction: column;">
+        <p class="label">Subnetzmaske</p>
+        <div class="field mono">255.255.255.0</div>
+      </div>
+      <div style="display: flex; flex-direction: column;">
+        <p class="label">DNS</p>
+        <div class="field mono placeholder">leer = Gateway</div>
+      </div>
+    </div>
+    <p class="hint">Eine feste IP spart beim Aufwachen die DHCP-Zeit und damit Akku. Gateway und Maske sind dann Pflicht.</p>
+  </div>
+
+  <!-- MQTT -->
+  <div class="card">
+    <p class="card-title">MQTT</p>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
+      <div style="display: flex; flex-direction: column; grid-column: span 2;">
+        <p class="label">Broker</p>
+        <div class="field mono">192.168.1.10</div>
+      </div>
+      <div style="display: flex; flex-direction: column;">
+        <p class="label">Port</p>
+        <div class="field mono">1883</div>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+      <div style="display: flex; flex-direction: column;">
+        <p class="label">Benutzer</p>
+        <div class="field placeholder">optional</div>
+      </div>
+      <div style="display: flex; flex-direction: column;">
+        <p class="label">Passwort</p>
+        <div class="field placeholder">optional</div>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+      <div style="display: flex; flex-direction: column;">
+        <p class="label">Topic-Präfix</p>
+        <div class="field mono">soil</div>
+      </div>
+      <div style="display: flex; flex-direction: column;">
+        <p class="label">Gerätename</p>
+        <div class="field mono">sensor1</div>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #0a0e13; border: 1px solid #242c36; border-radius: 8px; padding: 10px 12px;">
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-size: 12px; color: #8a94a1;">Sendet nach</span>
+        <span class="mono" style="font-size: 13px; color: #e6eaef;">soil/sensor1/state</span>
+      </div>
+      <div class="btn btn-ghost" style="height: 36px; font-size: 13px;">Testnachricht</div>
+    </div>
+  </div>
+
+  <!-- Aktionen -->
+  <div style="display: flex; flex-direction: column; gap: 10px; padding-top: 6px;">
+    <div class="btn btn-ghost">Speichern</div>
+    <div class="btn btn-primary" style="height: 48px; font-size: 15px;">Speichern und Messbetrieb starten</div>
+    <p class="hint" style="text-align: center;">Danach misst der Sensor, sendet und schläft 15 Minuten. Zurück ins Menü: Taster am Gehäuse drücken.</p>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"level":{"editor":"enum","options":["trocken","ok","nass"],"default":"ok","section":"Vorschau"},"$preview":{"width":390,"height":1760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const level = this.props.level ?? 'ok';
+    const table = {
+      trocken: { pct: 18, raw: 218, label: 'trocken', color: '#e8a85c', glow: 'rgba(232,168,92,0.45)', badgeBg: 'rgba(232,168,92,0.12)', badgeBorder: 'rgba(232,168,92,0.35)' },
+      ok:      { pct: 54, raw: 202, label: 'ok',      color: '#5eb1e8', glow: 'rgba(94,177,232,0.45)', badgeBg: 'rgba(94,177,232,0.12)', badgeBorder: 'rgba(94,177,232,0.35)' },
+      nass:    { pct: 83, raw: 189, label: 'nass',    color: '#9b8cf5', glow: 'rgba(155,140,245,0.45)', badgeBg: 'rgba(155,140,245,0.12)', badgeBorder: 'rgba(155,140,245,0.35)' }
+    };
+    const m = table[level] || table.ok;
+    return { m: { ...m, left: m.pct + '%' } };
+  }
+}
+</script>
+</body>
+</html>
