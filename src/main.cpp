@@ -46,7 +46,7 @@ static bool connectStation(unsigned long timeoutMs) {
 }
 
 // Kehrt nicht zurueck. Wakeup ueber GPIO16 -> RST.
-static void goToSleep() {
+[[noreturn]] static void goToSleep() {
   uint64_t us = (uint64_t)cfg.intervalMin * 60ULL * 1000000ULL;
   uint64_t maxUs = ESP.deepSleepMax();
   if (us > maxUs) {
@@ -57,7 +57,7 @@ static void goToSleep() {
   Serial.flush();
   WiFi.mode(WIFI_OFF);
   ESP.deepSleep(us);
-  delay(500);   // deepSleep braucht einen Moment
+  for (;;) delay(1000);   // deepSleep braucht einen Moment; kehrt nie wirklich zurueck
 }
 
 // Messen, senden, schlafen. Jeder Fehler fuehrt trotzdem zum Schlafen.
@@ -93,6 +93,7 @@ static void runConfigMode() {
 
   WebUi ui(cfg, CONFIG_TIMEOUT_MS);
   ui.begin();
+  ui.setRaw(readMoistureRaw());   // damit die Seite nicht 2 s lang Roh 0 zeigt
 
   unsigned long lastMeasure = 0;
   bool reportedSta = false;
