@@ -127,13 +127,16 @@ size_t serializeConfig(const Config& c, char* buf, size_t n, bool maskSecrets) {
 
 static const char* CONFIG_PATH = "/config.json";
 
+static const char* CONFIG_TMP_PATH = "/config.json.tmp";
+
 bool loadConfig(Config& io) {
   File f = LittleFS.open(CONFIG_PATH, "r");
   if (!f) {
     Serial.println("Keine config.json, Standardwerte");
     return false;
   }
-  char buf[CONFIG_JSON_SIZE];
+  // static: 1 KB gehoert nicht auf den 4-KB-Stack; Code ist single-threaded
+  static char buf[CONFIG_JSON_SIZE];
   size_t n = f.readBytes(buf, sizeof buf - 1);
   buf[n] = '\0';
   f.close();
@@ -145,16 +148,26 @@ bool loadConfig(Config& io) {
 }
 
 bool saveConfig(const Config& c) {
-  char buf[CONFIG_JSON_SIZE];
+  static char buf[CONFIG_JSON_SIZE];
   size_t n = serializeConfig(c, buf, sizeof buf, false);
   if (n == 0) return false;
-  File f = LittleFS.open(CONFIG_PATH, "w");
+  File f = LittleFS.open(CONFIG_TMP_PATH, "w");
   if (!f) {
-    Serial.println("config.json kann nicht geschrieben werden");
+    Serial.println("config.json.tmp kann nicht geschrieben werden");
     return false;
   }
   size_t written = f.write((const uint8_t*)buf, n);
   f.close();
-  return written == n;
+  if (written != n) {
+    Serial.println("config.json.tmp unvollstaendig geschrieben");
+    LittleFS.remove(CONFIG_TMP_PATH);
+    return false;
+  }
+  LittleFS.remove(CONFIG_PATH);            // darf fehlschlagen, wenn noch keine Datei existiert
+  if (!LittleFS.rename(CONFIG_TMP_PATH, CONFIG_PATH)) {
+    Serial.println("config.json konnte nicht ersetzt werden");
+    return false;
+  }
+  return true;
 }
 #endif

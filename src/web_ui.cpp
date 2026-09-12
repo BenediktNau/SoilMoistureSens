@@ -61,7 +61,7 @@ void WebUi::handleStatus() {
 
 void WebUi::handleGetConfig() {
   touch();
-  char buf[CONFIG_JSON_SIZE];
+  static char buf[CONFIG_JSON_SIZE];
   if (serializeConfig(cfg_, buf, sizeof buf, true) == 0) {
     server_.send(500, TEXT_TYPE, "Konfiguration zu gross");
     return;
