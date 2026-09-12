@@ -114,9 +114,15 @@ Regeln:
 - `dryBelowPct` muss kleiner als `wetAbovePct` sein, sonst wird der
   POST mit 400 abgelehnt.
 - Ist `staticIp` gesetzt, müssen `staticIp`, `gateway` und `subnet` gültige
-  IPv4-Adressen sein, sonst 400. Leeres `dns` bedeutet Gateway als DNS.
-  Leeres `staticIp` bedeutet DHCP; Gateway, Subnetz und DNS werden dann
-  ignoriert.
+  IPv4-Adressen sein, sonst 400. Zusätzlich muss `subnet` eine echte
+  Netzmaske sein (erstes Oktett 255, Einsen zusammenhängend) und `staticIp`
+  und `gateway` müssen im selben Subnetz liegen, sonst ebenfalls 400. Grund:
+  Der ESP8266-Core erkennt die Argumentreihenfolge von `WiFi.config()` an
+  der Maske und lehnt IP und Gateway in verschiedenen Subnetzen still ab.
+  Leeres `dns` bedeutet Gateway als DNS. Leeres `staticIp` bedeutet DHCP;
+  Gateway, Subnetz und DNS werden dann ignoriert.
+- Schlägt `WiFi.config()` trotz Validierung fehl, meldet das Gerät seriell
+  "Statische IP abgelehnt, weiter mit DHCP" und verbindet per DHCP.
 - Die statische IP gilt in beiden Modi: im Messbetrieb vor `WiFi.begin`
   (spart die DHCP-Zeit), im Konfigmodus für die Heimnetz-Verbindung. Der
   Access Point behält immer 192.168.4.1.
@@ -180,7 +186,11 @@ Aufbau von oben nach unten:
 | POST | `/api/sleep` | antwortet 200 und beendet den Konfigmodus |
 
 Der Knopf "Speichern und Messbetrieb starten" ruft im Browser erst
-`POST /api/config`, dann `POST /api/sleep`. Der Knopf "Testnachricht"
+`POST /api/config`, dann `POST /api/sleep`. Ändert ein POST die
+WLAN-Einstellungen, antwortet das Gerät zuerst mit 200 und verbindet erst
+etwa eine halbe Sekunde später neu, damit die Antwort über die bestehende
+Verbindung noch ankommt. Leere Zahlenfelder schickt der Browser nicht mit,
+der gespeicherte Wert bleibt dann erhalten. Der Knopf "Testnachricht"
 speichert vorher ebenfalls, damit die Testnachricht mit den sichtbaren
 Werten geht.
 
@@ -275,7 +285,7 @@ WiFiManager entfällt.
 | WLAN im Messbetrieb nicht erreichbar | nach 15 s schlafen, seriell melden |
 | Broker nicht erreichbar | nach 5 s schlafen, seriell melden |
 | Ungültiger POST (Schwellen, ungültige IP) | 400 mit Klartext-Fehler, nichts gespeichert |
-| LittleFS-Schreibfehler | 500, alte Datei bleibt |
+| LittleFS-Schreibfehler | 500, alte Datei bleibt (Schreiben über `/config.json.tmp` und `rename`) |
 | Taster während Messbetrieb | Reset, Konfigmodus beim nächsten Boot |
 
 ## Tests
