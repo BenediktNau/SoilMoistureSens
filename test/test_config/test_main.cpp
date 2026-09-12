@@ -148,6 +148,27 @@ void test_validate_static_ip() {
   // DNS gesetzt, aber ungueltig
   strcpy(c.dns, "dns.local");
   TEST_ASSERT_NOT_NULL(validateConfig(c));
+  strcpy(c.dns, "");
+  // Maske ist eine gueltige IPv4-Adresse, aber keine echte Netzmaske
+  strcpy(c.subnet, "192.168.1.0");
+  TEST_ASSERT_NOT_NULL(validateConfig(c));
+  // IP und Gateway liegen in verschiedenen Subnetzen
+  strcpy(c.subnet, "255.255.255.0");
+  strcpy(c.staticIp, "192.168.1.50");
+  strcpy(c.gateway, "192.168.2.1");
+  TEST_ASSERT_NOT_NULL(validateConfig(c));
+  // mit groesserer Maske liegen beide im selben Subnetz
+  strcpy(c.subnet, "255.255.0.0");
+  TEST_ASSERT_NULL(validateConfig(c));
+}
+
+void test_validate_requires_device_and_prefix() {
+  Config c = defaultConfig();
+  strcpy(c.deviceName, "");
+  TEST_ASSERT_NOT_NULL(validateConfig(c));
+  c = defaultConfig();
+  strcpy(c.topicPrefix, "");
+  TEST_ASSERT_NOT_NULL(validateConfig(c));
 }
 
 void test_serialize_roundtrip() {
@@ -215,6 +236,7 @@ int main(int, char**) {
   RUN_TEST(test_serialize_roundtrip);
   RUN_TEST(test_serialize_masks_secrets);
   RUN_TEST(test_serialize_too_small_buffer_returns_zero);
+  RUN_TEST(test_validate_requires_device_and_prefix);
   RUN_TEST(test_evaluate_reading);
   return UNITY_END();
 }

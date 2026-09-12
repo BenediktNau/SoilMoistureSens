@@ -85,9 +85,17 @@ const char* validateConfig(const Config& c) {
   if (c.deviceName[0] == '\0') return "Geraetename darf nicht leer sein";
   if (c.topicPrefix[0] == '\0') return "Topic-Praefix darf nicht leer sein";
   if (c.staticIp[0] != '\0') {
-    if (!parseIpv4(c.staticIp, nullptr)) return "Statische IP ist keine gueltige IPv4-Adresse";
-    if (!parseIpv4(c.gateway, nullptr)) return "Gateway fehlt oder ist keine gueltige IPv4-Adresse";
-    if (!parseIpv4(c.subnet, nullptr)) return "Subnetzmaske ist keine gueltige IPv4-Adresse";
+    uint8_t ip[4], gw[4], mask[4];
+    if (!parseIpv4(c.staticIp, ip)) return "Statische IP ist keine gueltige IPv4-Adresse";
+    if (!parseIpv4(c.gateway, gw)) return "Gateway fehlt oder ist keine gueltige IPv4-Adresse";
+    if (!parseIpv4(c.subnet, mask)) return "Subnetzmaske ist keine gueltige IPv4-Adresse";
+    // Der ESP8266-Core erkennt die Reihenfolge der WiFi.config()-Argumente an
+    // der Maske und lehnt IP/Gateway in verschiedenen Subnetzen ab.
+    if (!isValidNetmask(mask)) return "Subnetzmaske ist ungueltig (z. B. 255.255.255.0)";
+    uint32_t m = ipv4ToU32(mask);
+    if ((ipv4ToU32(ip) & m) != (ipv4ToU32(gw) & m)) {
+      return "Statische IP und Gateway liegen nicht im selben Subnetz";
+    }
     if (c.dns[0] != '\0' && !parseIpv4(c.dns, nullptr)) return "DNS ist keine gueltige IPv4-Adresse";
   }
   return nullptr;
