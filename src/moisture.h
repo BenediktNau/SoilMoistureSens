@@ -36,3 +36,19 @@ inline const char* levelNameDe(Level level) {
     default:         return "ok";
   }
 }
+
+#include "config.h"
+
+struct Reading {
+  int raw;
+  int percent;
+  Level level;
+};
+
+inline Reading evaluateReading(int raw, const Config& c) {
+  Reading r;
+  r.raw = raw;
+  r.percent = moisturePercent(raw, c.dryRaw, c.wetRaw);
+  r.level = classify(r.percent, c.dryBelowPct, c.wetAbovePct);
+  return r;
+}
