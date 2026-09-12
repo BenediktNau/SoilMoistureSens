@@ -1,36 +1,25 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
-#include <WiFiManager.h>
-
-const char* AP_NAME     = "SoilMoisture-Setup";
-const char* AP_PASSWORD = "bodenfeuchte";
-const int   PORTAL_TIMEOUT_S = 180;
-
-const int DRY_VALUE = 226;   // Sensor an der Luft bzw. in trockener Erde
-const int WET_VALUE = 181;   // Sensor im Wasserglas bzw. in nasser Erde
-
-const int SAMPLES = 10;      // Anzahl Messungen, die gemittelt werden
-
-void connectWifi() {
-  WiFiManager wm;
-  wm.setConfigPortalTimeout(PORTAL_TIMEOUT_S);
-
-  if (WiFi.SSID().length() == 0) {
-    Serial.println("Kein WLAN gespeichert, open Access Point");
-  } else {
-    Serial.printf("Verbinde mit gespeichertem WLAN '%s'\n", WiFi.SSID().c_str());
-  }
-
-  // Probiert gespeicherte Zugangsdaten, sonst Portal. Blockiert bis Erfolg oder Timeout.
-  if (!wm.autoConnect(AP_NAME, AP_PASSWORD)) {
-    Serial.println("Keine Verbindung innerhalb des Timeouts, Neustart");
-    delay(1000);
-    ESP.restart();
-  }
-
-  Serial.print("Verbunden, IP: ");
-  Serial.println(WiFi.localIP());
+#include <LittleFS.h>
+extern "C" {
+#include <user_interface.h>
 }
+#include "config.h"
+#include "moisture.h"
+#include "boot_mode.h"
+#include "mqtt_sender.h"
+#include "wifi_station.h"
+#include "web_ui.h"
+
+static const char* AP_NAME     = "SoilMoisture-Setup";
+static const char* AP_PASSWORD = "bodenfeuchte";
+
+static const unsigned long WIFI_TIMEOUT_MS   = 15000;
+static const unsigned long CONFIG_TIMEOUT_MS = 5UL * 60UL * 1000UL;
+static const unsigned long MEASURE_PERIOD_MS = 2000;
+static const int SAMPLES = 10;   // Anzahl Messungen, die gemittelt werden
+
+static Config cfg;
 
 int readMoistureRaw() {
   long sum = 0;
@@ -41,25 +30,107 @@ int readMoistureRaw() {
   return sum / SAMPLES;
 }
 
-int moisturePercent(int raw) {
-  int pct = map(raw, DRY_VALUE, WET_VALUE, 0, 100);
-  return constrain(pct, 0, 100);
+// Verbindet mit dem gespeicherten WLAN, blockiert hoechstens timeoutMs.
+static bool connectStation(unsigned long timeoutMs) {
+  if (!beginStation(cfg)) return false;
+  Serial.printf("Verbinde mit '%s'", cfg.ssid);
+  unsigned long start = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - start < timeoutMs) {
+    delay(100);
+    Serial.print('.');
+  }
+  Serial.println();
+  if (WiFi.status() != WL_CONNECTED) return false;
+  Serial.printf("Verbunden, IP %s, RSSI %d\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
+  return true;
+}
+
+// Kehrt nicht zurueck. Wakeup ueber GPIO16 -> RST.
+static void goToSleep() {
+  uint64_t us = (uint64_t)cfg.intervalMin * 60ULL * 1000000ULL;
+  Serial.printf("Deep Sleep fuer %d Minuten (wach seit %lu ms)\n", cfg.intervalMin, millis());
+  Serial.flush();
+  WiFi.mode(WIFI_OFF);
+  ESP.deepSleep(us);
+  delay(500);   // deepSleep braucht einen Moment
+}
+
+// Messen, senden, schlafen. Jeder Fehler fuehrt trotzdem zum Schlafen.
+static void measureCycle() {
+  Reading r = evaluateReading(readMoistureRaw(), cfg);
+  Serial.printf("Roh: %4d  Feuchte: %3d %%  %s\n", r.raw, r.percent, levelNameDe(r.level));
+
+  if (!configIsValid(cfg)) {
+    Serial.println("Keine gueltige Konfiguration, nichts zu senden");
+    goToSleep();
+  }
+  WiFi.mode(WIFI_STA);
+  if (!connectStation(WIFI_TIMEOUT_MS)) {
+    Serial.println("WLAN nicht erreichbar");
+    goToSleep();
+  }
+  char err[96];
+  if (!mqttPublishReading(cfg, r, WiFi.RSSI(), false, err, sizeof err)) {
+    Serial.println(err);
+  } else {
+    Serial.println("Gesendet");
+  }
+  goToSleep();
+}
+
+// Access Point plus Heimnetz, Webserver, bis Timeout oder /api/sleep.
+static void runConfigMode() {
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.softAP(AP_NAME, AP_PASSWORD);
+  beginStation(cfg);   // nicht blockierend, Erfolg egal
+  Serial.printf("Konfigmodus: AP '%s', Passwort '%s', http://%s/\n",
+                AP_NAME, AP_PASSWORD, WiFi.softAPIP().toString().c_str());
+
+  WebUi ui(cfg, CONFIG_TIMEOUT_MS);
+  ui.begin();
+
+  unsigned long lastMeasure = 0;
+  bool reportedSta = false;
+  while (!ui.shouldExit()) {
+    ui.handle();
+    if (millis() - lastMeasure >= MEASURE_PERIOD_MS) {
+      lastMeasure = millis();
+      ui.setRaw(readMoistureRaw());
+    }
+    if (!reportedSta && WiFi.status() == WL_CONNECTED) {
+      reportedSta = true;
+      Serial.printf("Auch im Heimnetz erreichbar: http://%s/\n", WiFi.localIP().toString().c_str());
+    }
+    delay(2);
+  }
+  Serial.println("Konfigmodus beendet, wechsle in den Messbetrieb");
+  WiFi.softAPdisconnect(true);
+  measureCycle();
 }
 
 void setup() {
   Serial.begin(115200);
   Serial.println();
-  connectWifi();
+  WiFi.persistent(false);   // Zugangsdaten nur aus config.json, kein Flash-Schreiben durch den Core
+
+  if (!LittleFS.begin()) {
+    Serial.println("LittleFS konnte nicht gemountet werden");
+  }
+  cfg = defaultConfig();
+  loadConfig(cfg);
+
+  uint32_t reason = ESP.getResetInfoPtr()->reason;
+  BootMode mode = chooseBootMode(reason, configIsValid(cfg));
+  Serial.printf("Reset-Grund %u, Konfiguration %s, Modus %s\n",
+                reason, configIsValid(cfg) ? "gueltig" : "unvollstaendig", bootModeName(mode));
+
+  if (mode == BootMode::Configure) {
+    runConfigMode();
+  } else {
+    measureCycle();
+  }
 }
 
 void loop() {
-  int raw = readMoistureRaw();
-  int pct = moisturePercent(raw);
-
-  Serial.printf("Roh: %4d  Feuchte: %3d %%  ", raw, pct);
-  if (pct < 30)      Serial.println("trocken");
-  else if (pct < 70) Serial.println("ok");
-  else               Serial.println("nass");
-
-  delay(2000);
+  // Alles passiert in setup(); measureCycle() endet immer im Deep Sleep.
 }
