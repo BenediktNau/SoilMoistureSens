@@ -48,6 +48,11 @@ static bool connectStation(unsigned long timeoutMs) {
 // Kehrt nicht zurueck. Wakeup ueber GPIO16 -> RST.
 static void goToSleep() {
   uint64_t us = (uint64_t)cfg.intervalMin * 60ULL * 1000000ULL;
+  uint64_t maxUs = ESP.deepSleepMax();
+  if (us > maxUs) {
+    Serial.printf("Intervall auf Maximum begrenzt (%lu s)\n", (unsigned long)(maxUs / 1000000ULL));
+    us = maxUs;
+  }
   Serial.printf("Deep Sleep fuer %d Minuten (wach seit %lu ms)\n", cfg.intervalMin, millis());
   Serial.flush();
   WiFi.mode(WIFI_OFF);
