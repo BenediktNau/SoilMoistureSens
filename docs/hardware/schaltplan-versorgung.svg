@@ -1,0 +1,209 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1000 625" width="1000" height="625" role="img">
+<title>Schaltplan Versorgung: Das 6-Volt-Solarpanel speist einen MP1584-Step-down, der auf 5 Volt eingestellt ist und den VIN-Eingang des HW-775 mit IP5306 versorgt. Am BAT-Pad hängt direkt die 18650-Zelle mit eingebauter Schutzschaltung. VOUT und KEY des HW-775 bleiben frei. Vom Knoten BAT geht es über einen HT7333-Regler mit 10-Mikrofarad-Kondensatoren an Eingang und Ausgang auf den 3V3-Pin des NodeMCU. Eine Brücke verbindet D0 mit RST für den Wakeup aus dem Deep Sleep. VIN und 5V bleiben frei. Vom Knoten BAT zweigt außerdem die Versorgung des MT3608 auf Blatt 2 ab.</title>
+<style>
+  svg { color: #15212b; }
+  text { font-family: "IBM Plex Mono", "DejaVu Sans Mono", Menlo, Consolas, monospace; font-size: 11px; fill: #15212b; }
+  .t12 { font-size: 12px; } .t10 { font-size: 10px; } .b { font-weight: 600; }
+  .m { fill: #5d6c78; }
+  .w { fill: none; stroke: #15212b; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .acc { stroke: #c0451c; } .accf { fill: #c0451c; } .acct { fill: #c0451c; font-weight: 600; }
+  .box, .part { fill: #f6f8f7; stroke: #15212b; stroke-width: 1.5; }
+  .dot { fill: #15212b; }
+  .nc { stroke: #5d6c78; stroke-width: 1.3; fill: none; }
+</style>
+<rect x="0" y="0" width="1000" height="625" fill="#f6f8f7"/>
+
+        <defs>
+          <g id="gnd">
+            <line class="w" x1="-10" y1="0" x2="10" y2="0"/>
+            <line class="w" x1="-6" y1="4" x2="6" y2="4"/>
+            <line class="w" x1="-2" y1="8" x2="2" y2="8"/>
+          </g>
+          <g id="nc">
+            <line class="nc" x1="-4" y1="-4" x2="4" y2="4"/>
+            <line class="nc" x1="-4" y1="4" x2="4" y2="-4"/>
+          </g>
+        </defs>
+
+        <!-- PV1 Solarpanel -->
+        <rect class="box" x="20" y="60" width="120" height="190"/>
+        <text class="t12 b" x="80" y="180" text-anchor="middle">PV1</text>
+        <text x="80" y="198" text-anchor="middle">Solarpanel</text>
+        <text class="t10 m" x="80" y="214" text-anchor="middle">6 V · 14,5 cm</text>
+        <text class="t10 m" x="80" y="228" text-anchor="middle">Leerlauf bis 7 V</text>
+        <g class="w">
+          <line x1="40" y1="85" x2="120" y2="85"/>
+          <line x1="40" y1="85" x2="32" y2="115"/>
+          <line x1="120" y1="85" x2="112" y2="115"/>
+          <line x1="32" y1="115" x2="112" y2="115"/>
+          <line x1="60" y1="85" x2="56" y2="115"/>
+          <line x1="80" y1="85" x2="76" y2="115"/>
+          <line x1="100" y1="85" x2="96" y2="115"/>
+        </g>
+        <g class="t10">
+          <text x="132" y="114" text-anchor="end">+</text>
+          <text x="132" y="154" text-anchor="end">−</text>
+        </g>
+
+        <!-- U2 Step-down -->
+        <rect class="box" x="180" y="60" width="130" height="190"/>
+        <text class="t12 b" x="245" y="180" text-anchor="middle">U2  Step-down</text>
+        <text x="245" y="198" text-anchor="middle">MP1584 o. LM2596</text>
+        <text class="t10 m" x="245" y="214" text-anchor="middle">Ausgang auf 5,0 V</text>
+        <text class="t10 m" x="245" y="228" text-anchor="middle">einstellen (Poti)</text>
+        <text class="t10 m" x="245" y="80" text-anchor="middle">hält VIN unter 5,5 V</text>
+        <g class="t10">
+          <text x="188" y="114">IN+</text>
+          <text x="188" y="154">IN−</text>
+          <text x="302" y="114" text-anchor="end">OUT+</text>
+          <text x="302" y="154" text-anchor="end">OUT−</text>
+        </g>
+
+        <!-- U1 HW-775 (IP5306) -->
+        <rect class="box" x="350" y="60" width="180" height="210"/>
+        <text class="t12 b" x="450" y="186" text-anchor="middle">U1  HW-775</text>
+        <text x="462" y="202" text-anchor="middle">IP5306 Powerbank-IC</text>
+        <text class="t10 m" x="462" y="216" text-anchor="middle">Eingang 4,75–5,5 V</text>
+        <text class="t10 m" x="462" y="230" text-anchor="middle">Ladeschluss 4,2 V</text>
+        <text class="t10 m" x="462" y="258" text-anchor="middle">LEDs zeigen Ladestand</text>
+        <text class="t10 m" x="440" y="80" text-anchor="middle">VOUT + KEY unbenutzt</text>
+        <g class="t10">
+          <text x="358" y="114">VIN</text>
+          <text x="358" y="154">GND</text>
+          <text x="522" y="114" text-anchor="end">BAT</text>
+          <text x="522" y="154" text-anchor="end">GND</text>
+          <text class="m" x="358" y="204">VOUT</text>
+          <text class="m" x="358" y="244">KEY</text>
+        </g>
+        <g class="w">
+          <line x1="350" y1="200" x2="330" y2="200"/>
+          <line x1="350" y1="240" x2="330" y2="240"/>
+        </g>
+        <use xlink:href="#nc" x="330" y="200"/>
+        <use xlink:href="#nc" x="330" y="240"/>
+
+        <!-- BT1 18650 -->
+        <rect class="box" x="660" y="60" width="160" height="190"/>
+        <text class="t12 b" x="740" y="180" text-anchor="middle">BT1  18650</text>
+        <text x="740" y="198" text-anchor="middle">Li-Ion · 3,0–4,2 V</text>
+        <text class="t10 m" x="740" y="214" text-anchor="middle">protected: Schutz-IC</text>
+        <text class="t10 m" x="740" y="228" text-anchor="middle">in der Zelle (DW01-Typ)</text>
+        <g class="w">
+          <line x1="710" y1="95" x2="710" y2="135"/>
+          <line x1="722" y1="105" x2="722" y2="125"/>
+          <line x1="734" y1="95" x2="734" y2="135"/>
+          <line x1="746" y1="105" x2="746" y2="125"/>
+        </g>
+        <text class="t10 m" x="698" y="100" text-anchor="end">+</text>
+        <text class="t10 m" x="758" y="100">−</text>
+        <g class="t10">
+          <text x="668" y="114">+</text>
+          <text x="668" y="154">−</text>
+        </g>
+
+        <!-- Netze oben -->
+        <g class="w">
+          <line x1="140" y1="110" x2="180" y2="110"/>
+          <line x1="140" y1="150" x2="180" y2="150"/>
+          <line x1="310" y1="110" x2="350" y2="110"/>
+          <line x1="310" y1="150" x2="350" y2="150"/>
+          <line x1="530" y1="110" x2="660" y2="110"/>
+          <line x1="530" y1="150" x2="660" y2="150"/>
+        </g>
+        <text class="t10 m" x="330" y="104" text-anchor="middle">5 V</text>
+        <text class="t10 m" x="595" y="104" text-anchor="middle">VBAT</text>
+
+        <!-- Abzweig VBAT -> HT7333 (mit Sprung ueber GND) -->
+        <circle class="dot" cx="570" cy="110" r="3.5"/>
+        <path class="w" d="M570,110 L570,142 A8,8 0 0 1 570,158 L570,300 L620,300"/>
+        <text class="t10 m" x="578" y="240">VBAT</text>
+        <!-- Abzweig VBAT -> Blatt 2 (U5 MT3608) -->
+        <circle class="dot" cx="570" cy="285" r="3.5"/>
+        <line class="w" x1="570" y1="285" x2="452" y2="285"/>
+        <path class="part" d="M440,285 L452,279 L452,291 Z"/>
+        <text class="t10" x="432" y="289" text-anchor="end">VBAT → Blatt 2 · U5 IN+</text>
+        <!-- Abzweig GND -->
+        <circle class="dot" cx="610" cy="150" r="3.5"/>
+        <line class="w" x1="610" y1="150" x2="610" y2="190"/>
+        <use xlink:href="#gnd" x="610" y="190"/>
+
+        <!-- C2 am Eingang -->
+        <circle class="dot" cx="595" cy="300" r="3.5"/>
+        <line class="w" x1="595" y1="300" x2="595" y2="316"/>
+        <line class="w" x1="585" y1="316" x2="605" y2="316"/>
+        <line class="w" x1="585" y1="324" x2="605" y2="324"/>
+        <line class="w" x1="595" y1="324" x2="595" y2="535"/>
+        <text class="t10" x="587" y="345" text-anchor="end">C2 10µ</text>
+
+        <!-- U3 HT7333 -->
+        <rect class="box" x="620" y="270" width="120" height="60"/>
+        <text class="t12 b" x="680" y="296" text-anchor="middle">U3 HT7333</text>
+        <text class="t10 m" x="680" y="312" text-anchor="middle">LDO 3,3 V · 250 mA</text>
+        <g class="t10">
+          <text x="626" y="284">IN</text>
+          <text x="734" y="284" text-anchor="end">OUT</text>
+          <text x="686" y="326">GND</text>
+        </g>
+        <line class="w" x1="680" y1="330" x2="680" y2="535"/>
+        <circle class="dot" cx="680" cy="535" r="3.5"/>
+
+        <!-- OUT -> NodeMCU 3V3, C3 -->
+        <line class="w" x1="740" y1="300" x2="790" y2="300"/>
+        <circle class="dot" cx="765" cy="300" r="3.5"/>
+        <line class="w" x1="765" y1="300" x2="765" y2="316"/>
+        <line class="w" x1="755" y1="316" x2="775" y2="316"/>
+        <line class="w" x1="755" y1="324" x2="775" y2="324"/>
+        <line class="w" x1="765" y1="324" x2="765" y2="535"/>
+        <circle class="dot" cx="765" cy="535" r="3.5"/>
+        <text class="t10" x="757" y="345" text-anchor="end">C3 10µ</text>
+        <text class="t10 m" x="744" y="292">3V3</text>
+
+        <!-- GND-Schiene unten -->
+        <line class="w" x1="595" y1="535" x2="875" y2="535"/>
+        <line class="w" x1="640" y1="535" x2="640" y2="552"/>
+        <circle class="dot" cx="640" cy="535" r="3.5"/>
+        <use xlink:href="#gnd" x="640" y="552"/>
+
+        <!-- NodeMCU -->
+        <rect class="box" x="790" y="260" width="170" height="252"/>
+        <text class="t12 b" x="875" y="468" text-anchor="middle">NodeMCU</text>
+        <text class="t10 m" x="875" y="483" text-anchor="middle">ESP-12E · AMS1117 unbenutzt</text>
+        <g class="t10">
+          <text x="798" y="304">3V3</text>
+          <text x="798" y="404">D0 · GPIO16</text>
+          <text x="798" y="444">RST</text>
+          <text x="868" y="507" text-anchor="end">GND</text>
+          <text class="m" x="952" y="304" text-anchor="end">VIN</text>
+          <text x="952" y="384" text-anchor="end">D1 D2 D5 → Blatt 2</text>
+        </g>
+        <text class="t10 acct" x="798" y="424">Brücke: Deep-Sleep-Wakeup</text>
+        <text class="t10 m" x="875" y="338" text-anchor="middle">RST-Taster auf dem Board:</text>
+        <text class="t10 m" x="875" y="352" text-anchor="middle">2× in 3 s = Konfigmodus</text>
+        <!-- Bruecke D0-RST -->
+        <g class="w acc">
+          <line x1="790" y1="400" x2="770" y2="400"/>
+          <line x1="770" y1="400" x2="770" y2="440"/>
+          <line x1="770" y1="440" x2="790" y2="440"/>
+        </g>
+        <!-- GND-Pin unten -->
+        <line class="w" x1="875" y1="512" x2="875" y2="535"/>
+        <!-- VIN nicht belegt -->
+        <line class="w" x1="960" y1="300" x2="980" y2="300"/>
+        <use xlink:href="#nc" x="980" y="300"/>
+
+        <!-- Legende / Fuss -->
+        <g class="t10 m">
+          <circle class="dot" cx="66" cy="562" r="3.5"/>
+          <text x="78" y="566">Verbindung</text>
+          <use xlink:href="#nc" x="66" y="582"/>
+          <text x="78" y="586">Pin nicht belegt</text>
+          <path class="w" d="M205,556 L205,562 A5,5 0 0 1 205,572 L205,578"/>
+          <text x="217" y="570">Kreuzung ohne Verbindung</text>
+          <line class="w acc" x1="60" y1="604" x2="72" y2="604"/>
+          <text x="78" y="608">Brücke D0–RST, zum Flashen trennen</text>
+        </g>
+        <g class="t10 m">
+          <text x="960" y="566" text-anchor="end">SoilMoistureSens · Versorgung · Rev D</text>
+          <text x="960" y="582" text-anchor="end">2026-09-18 · Firmware feature/config-ui-sleep-mode</text>
+        </g>
+      </svg>
