@@ -28,10 +28,18 @@ JSON-Datei im LittleFS, die WLAN-Zugangsdaten eingeschlossen.
 ## Hardware-Voraussetzungen
 
 - Brücke **GPIO16 an RST** für den Timer-Wakeup aus Deep Sleep.
-- **Taster zwischen RST und GND** am Gehäuse. Er ist der einzige Weg in den
-  Konfigmodus im laufenden Betrieb.
+- **Reset-Taster** (auf dem NodeMCU vorhanden, kein zusätzlicher Taster).
+  Zweimal drücken innerhalb von 3 s ist der einzige Weg in den Konfigmodus
+  im laufenden Betrieb.
 - Beim Flashen über USB kann die GPIO16-Brücke stören. Das steht in der
   README.
+- Feuchte wird über einen **ADS1115** (I2C 0x48, Kanal A0) gemessen, nicht
+  über den internen ADC. Die Sensorversorgung schaltet **GPIO14** über einen
+  MOSFET; Pull-down 10 kΩ am Gate hält den Sensor im Deep Sleep aus.
+- Der Sensor (v1.2 mit NE555) läuft an **5 V** aus einem MT3608-Step-up
+  direkt am Akku. Der MOSFET an GPIO14 schaltet die Masse von Step-up und
+  Sensor gemeinsam. Der ESP selbst hängt über einen HT7333 am Akku und wird
+  am 3V3-Pin gespeist. Schaltplan Rev D unter `docs/hardware/`.
 
 ## Betriebsmodi und Startablauf
 
@@ -40,15 +48,24 @@ Beim Booten wird `ESP.getResetInfoPtr()->reason` ausgewertet:
 | Reset-Grund | Bedeutung | Modus |
 |---|---|---|
 | `REASON_DEEP_SLEEP_AWAKE` | Timer-Wakeup | Messbetrieb |
-| `REASON_EXT_SYS_RST` | Taster am RST | Konfigmodus |
+| `REASON_EXT_SYS_RST`, Doppel-Reset-Markierung gesetzt | zweiter Druck auf RST innerhalb von 3 s | Konfigmodus |
+| `REASON_EXT_SYS_RST`, keine Markierung | erster Druck auf RST | Markierung setzen, 3 s warten, Markierung löschen, dann wie Kaltstart |
 | alle anderen (Einschalten, Software-Reset, Watchdog) | Kaltstart | Messbetrieb, falls Konfiguration gültig, sonst Konfigmodus |
 
 Eine Konfiguration gilt als gültig, wenn SSID und MQTT-Host nicht leer sind.
 
+Die Doppel-Reset-Markierung ist ein Magic-Wert im RTC-Nutzerspeicher
+(`ESP.rtcUserMemoryRead/Write`, Block 0). Er überlebt einen Reset, nicht
+aber das Stromlos-Machen; nach dem Einschalten steht dort Zufall, daher ein
+32-Bit-Magic statt eines Bits. Timer-Wakeup und Kaltstart lesen die
+Markierung nicht.
+
 ### Messbetrieb (Ziel: unter 10 s wach)
 
 1. Konfiguration laden.
-2. Feuchte messen (10 Samples, gemittelt, wie bisher).
+2. Sensor einschalten, 200 ms warten, Feuchte messen (10 Wandlungen des
+   ADS1115, gemittelt), Sensor ausschalten. Antwortet der ADS1115 nicht,
+   wird nichts gesendet.
 3. WLAN verbinden, maximal 15 s.
 4. MQTT verbinden, maximal 5 s, Nachricht veröffentlichen.
 5. `ESP.deepSleep(intervalMin * 60e6)`.
@@ -207,6 +224,7 @@ Werten geht.
 ```
 src/
   main.cpp            Reset-Grund auswerten, Modus wählen, Abläufe
+  double_reset.h/.cpp Doppel-Reset-Markierung im RTC-Speicher
   config.h/.cpp       struct Config, Standardwerte, load()/save() über LittleFS + ArduinoJson
   moisture.h          reine Rechenlogik, ohne Arduino-Abhängigkeit
   web_ui.h/.cpp       ESP8266WebServer, Routen, PROGMEM-HTML
@@ -286,7 +304,8 @@ WiFiManager entfällt.
 | Broker nicht erreichbar | nach 5 s schlafen, seriell melden |
 | Ungültiger POST (Schwellen, ungültige IP) | 400 mit Klartext-Fehler, nichts gespeichert |
 | LittleFS-Schreibfehler | 500, alte Datei bleibt (Schreiben über `/config.json.tmp` und `rename`) |
-| Taster während Messbetrieb | Reset, Konfigmodus beim nächsten Boot |
+| Reset-Taster einmal während Messbetrieb | Reset, 3 s Wartefenster, dann normaler Messzyklus |
+| Reset-Taster zweimal innerhalb von 3 s | Konfigmodus |
 
 ## Tests
 
@@ -297,7 +316,7 @@ WiFiManager entfällt.
   `validateConfig` für Schwellen und statische IP, `parseIpv4`,
   `chooseBootMode`, MQTT-Topic und -Payload.
 - **Gerätetests von Hand** mit seriellem Monitor: Reset-Grund-Erkennung
-  (Taster, Timer, Einschalten), Konfigmodus-Timeout, Seite über AP und
+  (einfacher Reset, Doppel-Reset, Timer, Einschalten), Konfigmodus-Timeout, Seite über AP und
   Heimnetz, Scan, Speichern, Testnachricht am Broker sichtbar,
   Messzyklus-Dauer, Deep Sleep und Wakeup.
 
