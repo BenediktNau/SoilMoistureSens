@@ -4,6 +4,10 @@
 
 enum class Level { Dry, Ok, Wet };
 
+// Rohwert, den das Sensormodul liefert, wenn der ADS1115 nicht antwortet.
+constexpr int RAW_INVALID = -1;
+inline bool rawValid(int raw) { return raw >= 0; }
+
 // Prozent 0..100 aus einem Rohwert. dryRaw und wetRaw duerfen in beliebiger
 // Reihenfolge liegen. Gleiche Kalibrierwerte liefern 0 statt Division durch Null.
 inline int moisturePercent(int raw, int dryRaw, int wetRaw) {

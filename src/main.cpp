@@ -6,7 +6,9 @@ extern "C" {
 }
 #include "config.h"
 #include "moisture.h"
+#include "moisture_sensor.h"
 #include "boot_mode.h"
+#include "double_reset.h"
 #include "mqtt_sender.h"
 #include "wifi_station.h"
 #include "web_ui.h"
@@ -17,17 +19,15 @@ static const char* AP_PASSWORD = "bodenfeuchte";
 static const unsigned long WIFI_TIMEOUT_MS   = 15000;
 static const unsigned long CONFIG_TIMEOUT_MS = 5UL * 60UL * 1000UL;
 static const unsigned long MEASURE_PERIOD_MS = 2000;
-static const int SAMPLES = 10;   // Anzahl Messungen, die gemittelt werden
 
 static Config cfg;
 
-int readMoistureRaw() {
-  long sum = 0;
-  for (int i = 0; i < SAMPLES; i++) {
-    sum += analogRead(A0);
-    delay(10);
-  }
-  return sum / SAMPLES;
+// Sensor kurz einschalten, messen, wieder ausschalten.
+static int measureOnce() {
+  moistureSensorPower(true);
+  int raw = moistureSensorRead();
+  moistureSensorPower(false);
+  return raw;
 }
 
 // Verbindet mit dem gespeicherten WLAN, blockiert hoechstens timeoutMs.
@@ -62,8 +62,13 @@ static bool connectStation(unsigned long timeoutMs) {
 
 // Messen, senden, schlafen. Jeder Fehler fuehrt trotzdem zum Schlafen.
 static void measureCycle() {
-  Reading r = evaluateReading(readMoistureRaw(), cfg);
-  Serial.printf("Roh: %4d  Feuchte: %3d %%  %s\n", r.raw, r.percent, levelNameDe(r.level));
+  int raw = measureOnce();
+  if (!rawValid(raw)) {
+    Serial.println("Kein Messwert, ADS1115 antwortet nicht");
+    goToSleep();
+  }
+  Reading r = evaluateReading(raw, cfg);
+  Serial.printf("Roh: %5d  Feuchte: %3d %%  %s\n", r.raw, r.percent, levelNameDe(r.level));
 
   if (!configIsValid(cfg)) {
     Serial.println("Keine gueltige Konfiguration, nichts zu senden");
@@ -93,7 +98,8 @@ static void runConfigMode() {
 
   WebUi ui(cfg, CONFIG_TIMEOUT_MS);
   ui.begin();
-  ui.setRaw(readMoistureRaw());   // damit die Seite nicht 2 s lang Roh 0 zeigt
+  moistureSensorPower(true);       // im Konfigmodus bleibt der Sensor an, Live-Anzeige
+  ui.setRaw(moistureSensorRead()); // damit die Seite nicht 2 s lang Roh 0 zeigt
 
   unsigned long lastMeasure = 0;
   bool reportedSta = false;
@@ -101,7 +107,7 @@ static void runConfigMode() {
     ui.handle();
     if (millis() - lastMeasure >= MEASURE_PERIOD_MS) {
       lastMeasure = millis();
-      ui.setRaw(readMoistureRaw());
+      ui.setRaw(moistureSensorRead());
     }
     if (!reportedSta && WiFi.status() == WL_CONNECTED) {
       reportedSta = true;
@@ -110,6 +116,7 @@ static void runConfigMode() {
     delay(2);
   }
   Serial.println("Konfigmodus beendet, wechsle in den Messbetrieb");
+  moistureSensorPower(false);
   WiFi.softAPdisconnect(true);
   measureCycle();
 }
@@ -125,10 +132,27 @@ void setup() {
   cfg = defaultConfig();
   loadConfig(cfg);
 
+  if (!moistureSensorBegin()) {
+    Serial.println("ADS1115 nicht gefunden (I2C 0x48), Messwerte bleiben ungueltig");
+  }
+
   uint32_t reason = ESP.getResetInfoPtr()->reason;
-  BootMode mode = chooseBootMode(reason, configIsValid(cfg));
-  Serial.printf("Reset-Grund %u, Konfiguration %s, Modus %s\n",
-                reason, configIsValid(cfg) ? "gueltig" : "unvollstaendig", bootModeName(mode));
+  bool doubleReset = false;
+  if (reason == RST_REASON_EXT_SYS) {
+    doubleReset = doubleResetPending();
+    if (!doubleReset) {
+      // Erster Druck: Fenster fuer einen zweiten Druck offen halten.
+      doubleResetArm();
+      Serial.printf("Reset-Taster erkannt, nochmal druecken innerhalb von %lu s fuer den Konfigmodus\n",
+                    DOUBLE_RESET_WINDOW_MS / 1000);
+      delay(DOUBLE_RESET_WINDOW_MS);
+      doubleResetDisarm();
+    }
+  }
+  BootMode mode = chooseBootMode(reason, configIsValid(cfg), doubleReset);
+  Serial.printf("Reset-Grund %u%s, Konfiguration %s, Modus %s\n",
+                reason, doubleReset ? " (Doppel-Reset)" : "",
+                configIsValid(cfg) ? "gueltig" : "unvollstaendig", bootModeName(mode));
 
   if (mode == BootMode::Configure) {
     runConfigMode();
@@ -137,6 +161,5 @@ void setup() {
   }
 }
 
-void loop() {
-  // Alles passiert in setup(); measureCycle() endet immer im Deep Sleep.
-}
+// setup() kehrt nie zurueck (Deep Sleep oder Konfigmodus), loop() bleibt leer.
+void loop() {}

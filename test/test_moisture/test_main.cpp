@@ -45,6 +45,13 @@ void test_classify_dry_ok_wet() {
   TEST_ASSERT_EQUAL(Level::Wet, classify(100, 30, 70));
 }
 
+void test_invalid_raw_marker() {
+  // Sensor-Modul liefert RAW_INVALID, wenn der ADS1115 nicht antwortet
+  TEST_ASSERT_FALSE(rawValid(RAW_INVALID));
+  TEST_ASSERT_TRUE(rawValid(0));
+  TEST_ASSERT_TRUE(rawValid(24000));
+}
+
 void test_level_names() {
   TEST_ASSERT_EQUAL_STRING("dry", levelName(Level::Dry));
   TEST_ASSERT_EQUAL_STRING("ok", levelName(Level::Ok));
@@ -63,6 +70,7 @@ int main(int, char**) {
   RUN_TEST(test_percent_with_swapped_calibration);
   RUN_TEST(test_percent_with_equal_calibration_is_zero);
   RUN_TEST(test_classify_dry_ok_wet);
+  RUN_TEST(test_invalid_raw_marker);
   RUN_TEST(test_level_names);
   return UNITY_END();
 }

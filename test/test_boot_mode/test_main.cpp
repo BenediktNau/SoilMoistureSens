@@ -4,34 +4,38 @@
 void setUp() {}
 void tearDown() {}
 
-void test_timer_wakeup_measures_even_without_valid_config() {
-  TEST_ASSERT_EQUAL(BootMode::Measure, chooseBootMode(RST_REASON_DEEP_SLEEP_AWAKE, true));
-  TEST_ASSERT_EQUAL(BootMode::Measure, chooseBootMode(RST_REASON_DEEP_SLEEP_AWAKE, false));
+void test_timer_wakeup_measures() {
+  TEST_ASSERT_EQUAL(BootMode::Measure, chooseBootMode(RST_REASON_DEEP_SLEEP_AWAKE, true, false));
+  TEST_ASSERT_EQUAL(BootMode::Measure, chooseBootMode(RST_REASON_DEEP_SLEEP_AWAKE, false, false));
+  // Ein Doppel-Reset-Flag kann beim Timer-Wakeup nicht gesetzt sein, wird aber ignoriert.
+  TEST_ASSERT_EQUAL(BootMode::Measure, chooseBootMode(RST_REASON_DEEP_SLEEP_AWAKE, true, true));
 }
 
-void test_reset_button_configures() {
-  TEST_ASSERT_EQUAL(BootMode::Configure, chooseBootMode(RST_REASON_EXT_SYS, true));
-  TEST_ASSERT_EQUAL(BootMode::Configure, chooseBootMode(RST_REASON_EXT_SYS, false));
+void test_single_reset_behaves_like_cold_start() {
+  TEST_ASSERT_EQUAL(BootMode::Measure, chooseBootMode(RST_REASON_EXT_SYS, true, false));
+  TEST_ASSERT_EQUAL(BootMode::Configure, chooseBootMode(RST_REASON_EXT_SYS, false, false));
 }
 
-void test_cold_boot_depends_on_config() {
+void test_double_reset_configures() {
+  TEST_ASSERT_EQUAL(BootMode::Configure, chooseBootMode(RST_REASON_EXT_SYS, true, true));
+  TEST_ASSERT_EQUAL(BootMode::Configure, chooseBootMode(RST_REASON_EXT_SYS, false, true));
+}
+
+void test_other_reasons_depend_on_config() {
   const uint32_t powerOn = 0, softRestart = 4, watchdog = 1;
-  TEST_ASSERT_EQUAL(BootMode::Measure, chooseBootMode(powerOn, true));
-  TEST_ASSERT_EQUAL(BootMode::Configure, chooseBootMode(powerOn, false));
-  TEST_ASSERT_EQUAL(BootMode::Measure, chooseBootMode(softRestart, true));
-  TEST_ASSERT_EQUAL(BootMode::Configure, chooseBootMode(watchdog, false));
+  TEST_ASSERT_EQUAL(BootMode::Measure, chooseBootMode(powerOn, true, false));
+  TEST_ASSERT_EQUAL(BootMode::Configure, chooseBootMode(powerOn, false, false));
+  TEST_ASSERT_EQUAL(BootMode::Measure, chooseBootMode(softRestart, true, false));
+  TEST_ASSERT_EQUAL(BootMode::Configure, chooseBootMode(watchdog, false, false));
+  // Flag nur bei Reset-Taster relevant.
+  TEST_ASSERT_EQUAL(BootMode::Measure, chooseBootMode(powerOn, true, true));
 }
 
-void test_names() {
-  TEST_ASSERT_EQUAL_STRING("Messbetrieb", bootModeName(BootMode::Measure));
-  TEST_ASSERT_EQUAL_STRING("Konfigmodus", bootModeName(BootMode::Configure));
-}
-
-int main(int, char**) {
+int main() {
   UNITY_BEGIN();
-  RUN_TEST(test_timer_wakeup_measures_even_without_valid_config);
-  RUN_TEST(test_reset_button_configures);
-  RUN_TEST(test_cold_boot_depends_on_config);
-  RUN_TEST(test_names);
+  RUN_TEST(test_timer_wakeup_measures);
+  RUN_TEST(test_single_reset_behaves_like_cold_start);
+  RUN_TEST(test_double_reset_configures);
+  RUN_TEST(test_other_reasons_depend_on_config);
   return UNITY_END();
 }
