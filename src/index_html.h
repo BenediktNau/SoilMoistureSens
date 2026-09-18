@@ -110,7 +110,7 @@ button:disabled{opacity:.5;cursor:default}
  <div class="msg" id="msg"></div>
  <button type="button" onclick="save()">Speichern</button>
  <button type="button" class="pri" onclick="saveSleep()">Speichern und Messbetrieb starten</button>
- <p class="hint" style="text-align:center">Danach misst der Sensor, sendet und schl&auml;ft bis zum n&auml;chsten Intervall. Zur&uuml;ck ins Men&uuml;: Taster am Geh&auml;use dr&uuml;cken.</p>
+ <p class="hint" style="text-align:center">Danach misst der Sensor, sendet und schl&auml;ft bis zum n&auml;chsten Intervall. Zur&uuml;ck ins Men&uuml;: Reset-Taster zweimal innerhalb von 3 s dr&uuml;cken.</p>
 </div>
 
 </div>
@@ -162,9 +162,15 @@ async function save(){try{await post('/api/config',collect());$('wifiPassword').
 async function saveSleep(){
  try{await post('/api/config',collect());await post('/api/sleep');ended=true;clearInterval(timer);
   document.querySelectorAll('button').forEach(b=>b.disabled=true);
-  say('Sensor misst, sendet und schläft. Zurück ins Menü mit dem Taster.','ok')}catch(e){say(e.message,'err')}
+  say('Sensor misst, sendet und schläft. Zurück ins Menü: Reset-Taster zweimal innerhalb von 3 s.','ok')}catch(e){say(e.message,'err')}
 }
-async function mqttTest(){try{await post('/api/config',collect());const t=await post('/api/mqtt-test');say(t||'Testnachricht gesendet','ok')}catch(e){say(e.message,'err')}}
+const pause=ms=>new Promise(r=>setTimeout(r,ms));
+async function waitWifi(){
+ await pause(1500);
+ for(let i=0;i<25;i++){try{const r=await fetch('/api/status');const s=await r.json();if(s.staIp)return}catch(e){}await pause(1000)}
+ throw new Error('WLAN verbindet nicht mit den neuen Daten')
+}
+async function mqttTest(){try{const c=await post('/api/config',collect());if(c==='reconnect'){say('WLAN verbindet neu…');await waitWifi()}const t=await post('/api/mqtt-test');say(t||'Testnachricht gesendet','ok')}catch(e){say(e.message,'err')}}
 async function scan(){
  const b=$('scanBtn');b.disabled=true;b.textContent='Suche…';
  try{const r=await fetch('/api/scan');const nets=await r.json();const dl=$('nets');dl.innerHTML='';

@@ -16,6 +16,7 @@ bool beginStation(const Config& cfg) {
     IPAddress dns = cfg.dns[0] != '\0' && parseIpv4(cfg.dns, nullptr) ? toIp(cfg.dns) : toIp(cfg.gateway);
     if (!WiFi.config(toIp(cfg.staticIp), toIp(cfg.gateway), toIp(cfg.subnet), dns)) {
       Serial.println("Statische IP abgelehnt, weiter mit DHCP");
+      WiFi.config(IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0));
     } else {
       Serial.printf("Statische IP %s\n", cfg.staticIp);
     }

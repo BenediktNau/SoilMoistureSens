@@ -110,7 +110,7 @@ Intervall, damit der Akku geschont wird.
 Topic `<Präfix>/<Gerätename>/state`, retained:
 
 ```json
-{"raw":202,"percent":54,"level":"ok","rssi":-61}
+{"raw":16500,"percent":52,"level":"ok","rssi":-61}
 ```
 
 `level` ist `dry`, `ok` oder `wet` nach den eingestellten Schwellen.

@@ -116,8 +116,8 @@ Datei `/config.json` im LittleFS. Struktur `Config`:
 | MQTT | `mqttPassword` | String | leer |
 | MQTT | `topicPrefix` | String | `soil` |
 | MQTT | `deviceName` | String | `sensor1` |
-| Kalibrierung | `dryRaw` | int | 226 |
-| Kalibrierung | `wetRaw` | int | 181 |
+| Kalibrierung | `dryRaw` | int | 24000 (ADS1115-Schritte, etwa 3,0 V) |
+| Kalibrierung | `wetRaw` | int | 9600 (ADS1115-Schritte, etwa 1,2 V) |
 | Schwellen | `dryBelowPct` | int | 30 |
 | Schwellen | `wetAbovePct` | int | 70 |
 | Intervall | `intervalMin` | int | 15 |
@@ -197,9 +197,9 @@ Aufbau von oben nach unten:
 | GET | `/` | HTML-Seite |
 | GET | `/api/status` | `{raw, rssi, staIp, apIp, secondsLeft}` |
 | GET | `/api/config` | aktuelle Konfiguration, Passwörter leer |
-| POST | `/api/config` | JSON-Body, validieren, speichern; 200 oder 400 mit Fehlertext |
+| POST | `/api/config` | JSON-Body, validieren, speichern; 200 mit `ok` oder, wenn sich WLAN-Daten geändert haben, `reconnect` (die Seite wartet dann vor einem MQTT-Test auf die neue Verbindung); 400 mit Fehlertext |
 | GET | `/api/scan` | `[{ssid, rssi, secure}]`, sortiert nach RSSI |
-| POST | `/api/mqtt-test` | verbindet mit den **gespeicherten** MQTT-Daten und sendet eine Testnachricht; 200 oder 502 mit Fehlertext |
+| POST | `/api/mqtt-test` | verbindet mit den **gespeicherten** MQTT-Daten und sendet eine Testnachricht; 200 oder 502 mit Fehlertext. Ohne gültigen Messwert (ADS1115 antwortet nicht) 502, es wird nichts gesendet |
 | POST | `/api/sleep` | antwortet 200 und beendet den Konfigmodus |
 
 Der Knopf "Speichern und Messbetrieb starten" ruft im Browser erst
@@ -214,7 +214,7 @@ Werten geht.
 ## MQTT-Nachricht
 
 - Topic: `<topicPrefix>/<deviceName>/state`, retained.
-- Payload: `{"raw":202,"percent":54,"level":"ok","rssi":-61}`.
+- Payload: `{"raw":16500,"percent":52,"level":"ok","rssi":-61}`.
 - `level` ist `dry`, `ok` oder `wet` nach den Schwellen.
 - Client-ID: `<deviceName>`.
 - Testnachricht: gleiches Topic, gleiche Struktur, zusätzlich `"test":true`.
@@ -303,7 +303,7 @@ WiFiManager entfällt.
 | WLAN im Messbetrieb nicht erreichbar | nach 15 s schlafen, seriell melden |
 | Broker nicht erreichbar | nach 5 s schlafen, seriell melden |
 | Ungültiger POST (Schwellen, ungültige IP) | 400 mit Klartext-Fehler, nichts gespeichert |
-| LittleFS-Schreibfehler | 500, alte Datei bleibt (Schreiben über `/config.json.tmp` und `rename`) |
+| LittleFS-Schreibfehler | 500, alte Datei bleibt (Schreiben über `/config.json.tmp`, dann `rename`, das die alte Datei atomar ersetzt; kein `remove` davor) |
 | Reset-Taster einmal während Messbetrieb | Reset, 3 s Wartefenster, dann normaler Messzyklus |
 | Reset-Taster zweimal innerhalb von 3 s | Konfigmodus |
 

@@ -14,8 +14,8 @@ void test_defaults() {
   TEST_ASSERT_EQUAL_UINT16(1883, c.mqttPort);
   TEST_ASSERT_EQUAL_STRING("soil", c.topicPrefix);
   TEST_ASSERT_EQUAL_STRING("sensor1", c.deviceName);
-  TEST_ASSERT_EQUAL_INT(226, c.dryRaw);
-  TEST_ASSERT_EQUAL_INT(181, c.wetRaw);
+  TEST_ASSERT_EQUAL_INT(24000, c.dryRaw);
+  TEST_ASSERT_EQUAL_INT(9600, c.wetRaw);
   TEST_ASSERT_EQUAL_INT(30, c.dryBelowPct);
   TEST_ASSERT_EQUAL_INT(70, c.wetAbovePct);
   TEST_ASSERT_EQUAL_INT(15, c.intervalMin);
@@ -63,7 +63,7 @@ void test_parse_partial_json_keeps_rest() {
   TEST_ASSERT_TRUE(parseConfig("{\"intervalMin\":5}", c));
   TEST_ASSERT_EQUAL_INT(5, c.intervalMin);
   TEST_ASSERT_EQUAL_STRING("Alt", c.ssid);
-  TEST_ASSERT_EQUAL_INT(226, c.dryRaw);
+  TEST_ASSERT_EQUAL_INT(24000, c.dryRaw);
 }
 
 void test_parse_empty_object_and_garbage() {
@@ -244,13 +244,17 @@ void test_full_config_fits_buffer() {
 
 void test_evaluate_reading() {
   Config c = defaultConfig();
-  Reading r = evaluateReading(226, c);
-  TEST_ASSERT_EQUAL_INT(226, r.raw);
+  Reading r = evaluateReading(c.dryRaw, c);
+  TEST_ASSERT_EQUAL_INT(c.dryRaw, r.raw);
   TEST_ASSERT_EQUAL_INT(0, r.percent);
   TEST_ASSERT_EQUAL(Level::Dry, r.level);
-  r = evaluateReading(181, c);
+  r = evaluateReading(c.wetRaw, c);
   TEST_ASSERT_EQUAL_INT(100, r.percent);
   TEST_ASSERT_EQUAL(Level::Wet, r.level);
+  // Mitte der ADS1115-Spanne liegt mit den Standardschwellen im Bereich ok
+  r = evaluateReading((c.dryRaw + c.wetRaw) / 2, c);
+  TEST_ASSERT_EQUAL_INT(50, r.percent);
+  TEST_ASSERT_EQUAL(Level::Ok, r.level);
 }
 
 int main(int, char**) {

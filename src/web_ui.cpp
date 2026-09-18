@@ -102,7 +102,9 @@ void WebUi::handlePostConfig() {
                      strcmp(cfg_.dns, next.dns) != 0;
   cfg_ = next;
   Serial.println("Konfiguration gespeichert");
-  server_.send(200, TEXT_TYPE, "ok");
+  // "reconnect" sagt der Oberflaeche, dass sie vor einem MQTT-Test auf die
+  // neue WLAN-Verbindung warten muss.
+  server_.send(200, TEXT_TYPE, wifiChanged ? "reconnect" : "ok");
   if (wifiChanged) {
     // Erst antworten, dann neu verbinden: die Antwort geht sonst ueber eine
     // Verbindung, die WiFi.disconnect() gerade abbaut.
@@ -148,6 +150,11 @@ void WebUi::handleMqttTest() {
   }
   if (cfg_.mqttHost[0] == '\0') {
     server_.send(400, TEXT_TYPE, "Kein MQTT-Broker eingetragen");
+    return;
+  }
+  if (!rawValid(raw_)) {
+    // Kein retained raw:-1 auf dem Broker hinterlassen
+    server_.send(502, TEXT_TYPE, "Kein Messwert, ADS1115 antwortet nicht");
     return;
   }
   Reading r = evaluateReading(raw_, cfg_);

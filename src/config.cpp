@@ -19,8 +19,10 @@ Config defaultConfig() {
   setStr(c.subnet, sizeof c.subnet, "255.255.255.0");
   setStr(c.topicPrefix, sizeof c.topicPrefix, "soil");
   setStr(c.deviceName, sizeof c.deviceName, "sensor1");
-  c.dryRaw = 226;
-  c.wetRaw = 181;
+  // ADS1115 bei Gain 1: 0,125 mV pro Schritt. Sensor an 5 V liefert etwa
+  // 3,0 V in Luft und 1,2 V im Wasser. Vor Ort kalibrieren ersetzt die Werte.
+  c.dryRaw = 24000;
+  c.wetRaw = 9600;
   c.dryBelowPct = 30;
   c.wetAbovePct = 70;
   c.intervalMin = 15;
@@ -171,9 +173,11 @@ bool saveConfig(const Config& c) {
     LittleFS.remove(CONFIG_TMP_PATH);
     return false;
   }
-  LittleFS.remove(CONFIG_PATH);            // darf fehlschlagen, wenn noch keine Datei existiert
+  // lfs_rename ersetzt eine vorhandene Zieldatei atomar. Kein remove davor:
+  // sonst gaebe es bei Stromausfall einen Moment ganz ohne config.json.
   if (!LittleFS.rename(CONFIG_TMP_PATH, CONFIG_PATH)) {
     Serial.println("config.json konnte nicht ersetzt werden");
+    LittleFS.remove(CONFIG_TMP_PATH);
     return false;
   }
   return true;
